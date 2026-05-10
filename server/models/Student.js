@@ -1,0 +1,46 @@
+import mongoose from "mongoose";
+
+const studentSchema = new mongoose.Schema(
+  {
+    Name: {
+      type: String,
+      required: true,
+    },
+
+    Register_number: {
+      type: String,
+      required: true,
+      unique: true,
+    },
+
+    Year_of_studying: {
+      type: String,
+    },
+
+    Branch_of_studying: {
+      type: String,
+    },
+
+    Gender: {
+      type: String,
+    },
+
+    Mobile_number: {
+      type: String,
+    },
+
+    Email_id: {
+      type: String,
+    },
+
+    // ✅ Attendance Status
+    // status: {
+    //   type: String,
+    //   enum: ["Present", "Absent", ""],
+    //   default: "",
+    // },
+  },
+  { timestamps: true }
+);
+
+export default mongoose.model("Student", studentSchema);
