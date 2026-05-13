@@ -33,6 +33,11 @@ const studentSchema = new mongoose.Schema(
       type: String,
     },
 
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+
     // ✅ Attendance Status
     // status: {
     //   type: String,
