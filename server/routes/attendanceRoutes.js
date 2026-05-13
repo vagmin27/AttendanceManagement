@@ -1,10 +1,13 @@
 import express from "express";
+import protect from "../middleware/authMiddleware.js";
+import { allowTeacher, allowStudent } from "../middleware/roleMiddleware.js";
 
 import {
   markAttendance,
   downloadAttendance,
   downloadTodayAttendance,
   getAttendance,
+  getStudentAttendance,
   deleteStudentAttendance,
 } from "../controllers/attendanceController.js";
 
@@ -14,13 +17,25 @@ const router = express.Router();
 // ✅ GET ATTENDANCE
 router.get(
   "/attendance",
+  protect,
+  allowTeacher,
   getAttendance
+);
+
+// ✅ GET STUDENT ATTENDANCE
+router.get(
+  "/attendance/student",
+  protect,
+  allowStudent,
+  getStudentAttendance
 );
 
 
 // ✅ MARK ATTENDANCE
 router.post(
   "/attendance",
+  protect,
+  allowTeacher,
   markAttendance
 );
 
@@ -28,6 +43,8 @@ router.post(
 // ✅ DOWNLOAD CSV
 router.get(
   "/data/download",
+  protect,
+  allowTeacher,
   downloadAttendance
 );
 
@@ -35,18 +52,24 @@ router.get(
 // ✅ DOWNLOAD TODAY DOCX
 router.get(
   "/attendanceToday/:date",
+  protect,
+  allowTeacher,
   downloadTodayAttendance
 );
 
 // ✅ DELETE STUDENT ATTENDANCE
 router.delete(
   "/attendance/:studentId",
+  protect,
+  allowTeacher,
   deleteStudentAttendance
 );
 
 // ✅ DELETE ATTENDANCE USING REGISTER NUMBER
 router.delete(
   "/attendance/student/:register",
+  protect,
+  allowTeacher,
   deleteStudentAttendance
 );
 

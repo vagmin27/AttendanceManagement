@@ -356,6 +356,41 @@ export const getAttendance = async (
   }
 };
 
+// ✅ GET STUDENT ATTENDANCE
+export const getStudentAttendance = async (req, res) => {
+  try {
+    const studentId = req.user._id; // Assuming user is student
+
+    // Find student document
+    const student = await StudentModel.findOne({ userId: studentId });
+    if (!student) {
+      return res.status(404).json({ message: "Student not found" });
+    }
+
+    // Get all attendance records
+    const attendanceRecords = await AttendanceModel.find();
+
+    // Filter records where student is present
+    const studentAttendance = attendanceRecords.map(record => {
+      const studentRecord = record.attendanceRecords.find(
+        rec => rec.studentId.toString() === student._id.toString()
+      );
+      return {
+        date: record.date,
+        subject: record.subject,
+        attendance: studentRecord ? studentRecord.attendance : null,
+      };
+    });
+
+    res.status(200).json(studentAttendance);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      message: "Error fetching student attendance",
+    });
+  }
+};
+
 // ✅ DELETE STUDENT ATTENDANCE
 export const deleteStudentAttendance =
   async (req, res) => {

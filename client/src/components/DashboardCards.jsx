@@ -1,26 +1,31 @@
-function DashboardCards({
-  total,
-  present,
-  absent,
-}) {
+// DashboardCards is now handled directly via stat-card classes in Dashboard.jsx
+// This component is kept for backward compatibility but is no longer rendered directly.
+const DashboardCards = ({ total, present, absent }) => {
   return (
-    <div className="cards-container">
-      <div className="card">
-        <h3>Total Students</h3>
-        <p>{total}</p>
+    <div className="stats-grid">
+      <div className="stat-card">
+        <div className="stat-info">
+          <div className="stat-label">Total Students</div>
+          <div className="stat-value">{total}</div>
+        </div>
+        <div className="stat-icon indigo">👥</div>
       </div>
-
-      <div className="card green">
-        <h3>Present</h3>
-        <p>{present}</p>
+      <div className="stat-card">
+        <div className="stat-info">
+          <div className="stat-label">Present</div>
+          <div className="stat-value" style={{ color: "var(--success)" }}>{present}</div>
+        </div>
+        <div className="stat-icon green">✅</div>
       </div>
-
-      <div className="card red">
-        <h3>Absent</h3>
-        <p>{absent}</p>
+      <div className="stat-card">
+        <div className="stat-info">
+          <div className="stat-label">Absent</div>
+          <div className="stat-value" style={{ color: "var(--danger)" }}>{absent}</div>
+        </div>
+        <div className="stat-icon red">❌</div>
       </div>
     </div>
   );
-}
+};
 
 export default DashboardCards;

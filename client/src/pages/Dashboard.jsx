@@ -1,339 +1,209 @@
 import { useEffect, useState } from "react";
-
 import API from "../services/api";
-
-import DashboardCards from "../components/DashboardCards";
-
 import Charts from "../components/Charts";
+import {
+  MdPeople, MdCheckCircle, MdCancel, MdCalendarToday, MdTrendingUp, MdBarChart,
+} from "react-icons/md";
 
 function Dashboard() {
-  const [students, setStudents] =
-    useState([]);
+  const [students, setStudents] = useState([]);
+  const [attendance, setAttendance] = useState([]);
+  const [attendanceStats, setAttendanceStats] = useState([]);
+  const [presentStudents, setPresentStudents] = useState([]);
+  const [absentStudents, setAbsentStudents] = useState([]);
+  const [latestSubject, setLatestSubject] = useState("");
+  const [latestDate, setLatestDate] = useState("");
+  const [selectedDate, setSelectedDate] = useState(
+    new Date().toISOString().split("T")[0]
+  );
+  const [loading, setLoading] = useState(true);
 
-  const [attendance, setAttendance] =
-    useState([]);
-
-  const [attendanceStats, setAttendanceStats] =
-    useState([]);
-
-  const [presentStudents, setPresentStudents] =
-    useState([]);
-
-  const [absentStudents, setAbsentStudents] =
-    useState([]);
-
-  const [latestSubject, setLatestSubject] =
-    useState("");
-
-  const [latestDate, setLatestDate] =
-    useState("");
-
-  // ✅ SELECT DATE
-  const [selectedDate, setSelectedDate] =
-    useState(
-      new Date()
-        .toISOString()
-        .split("T")[0]
-    );
-
+  useEffect(() => { fetchData(); }, []);
   useEffect(() => {
-    fetchData();
-  }, []);
+    calculateSelectedDateAttendance(attendance, students, selectedDate);
+  }, [selectedDate, attendance, students]);
 
-  // ✅ UPDATE WHEN DATE CHANGES
-  useEffect(() => {
-    calculateSelectedDateAttendance(
-      attendance,
-      students,
-      selectedDate
-    );
-  }, [
-    selectedDate,
-    attendance,
-    students,
-  ]);
-
-  // ✅ FETCH DATA
   const fetchData = async () => {
     try {
-      // ✅ FETCH STUDENTS
-      const studentsRes = await API.get(
-        "/read"
-      );
-
-      // ✅ FETCH ATTENDANCE
-      const attendanceRes = await API.get(
-        "/attendance"
-      );
-
+      const [studentsRes, attendanceRes] = await Promise.all([
+        API.get("/read"),
+        API.get("/attendance"),
+      ]);
       const studentsData = studentsRes.data;
-
-      const attendanceData =
-        attendanceRes.data || [];
-
+      const attendanceData = attendanceRes.data || [];
       setStudents(studentsData);
-
       setAttendance(attendanceData);
-
-      // ✅ SUBJECT STATS
       calculateSubjectStats(attendanceData);
-
-      // ✅ LATEST SESSION
-      calculateLatestAttendance(
-        attendanceData
-      );
-
-      // ✅ SELECTED DATE
-      calculateSelectedDateAttendance(
-        attendanceData,
-        studentsData,
-        selectedDate
-      );
+      calculateLatestAttendance(attendanceData);
+      calculateSelectedDateAttendance(attendanceData, studentsData, selectedDate);
     } catch (error) {
-      console.log(
-        "Dashboard Error:",
-        error
-      );
+      console.error("Dashboard Error:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  // ✅ SUBJECT-WISE STATS
-  const calculateSubjectStats = (
-    attendanceData
-  ) => {
-    const subjectMap = {};
-
-    attendanceData.forEach((item) => {
-      const subject = item.subject;
-
-      if (!subject) return;
-
-      if (!subjectMap[subject]) {
-        subjectMap[subject] = {
-          total: 0,
-          present: 0,
-        };
-      }
-
-      item.attendanceRecords.forEach(
-        (record) => {
-          subjectMap[subject].total++;
-
-          if (
-            record.attendance === "present"
-          ) {
-            subjectMap[subject].present++;
-          }
-        }
-      );
+  const calculateSubjectStats = (data) => {
+    const map = {};
+    data.forEach((item) => {
+      const s = item.subject;
+      if (!s) return;
+      if (!map[s]) map[s] = { total: 0, present: 0 };
+      item.attendanceRecords.forEach((r) => {
+        map[s].total++;
+        if (r.attendance === "present") map[s].present++;
+      });
     });
-
-    const statsArray = Object.keys(
-      subjectMap
-    ).map((subject) => ({
-      subject,
-
-      percentage: Number(
-        (
-          (subjectMap[subject].present /
-            subjectMap[subject].total) *
-          100
-        ).toFixed(1)
-      ),
-
-      presentDays:
-        subjectMap[subject].present,
-
-      totalClasses:
-        subjectMap[subject].total,
-    }));
-
-    setAttendanceStats(statsArray);
-  };
-
-  // ✅ LATEST SESSION
-  const calculateLatestAttendance = (
-    attendanceData
-  ) => {
-    if (attendanceData.length === 0)
-      return;
-
-    const latestAttendance = [
-      ...attendanceData,
-    ].sort(
-      (a, b) =>
-        new Date(b.createdAt) -
-        new Date(a.createdAt)
-    )[0];
-
-    setLatestSubject(
-      latestAttendance.subject
+    setAttendanceStats(
+      Object.keys(map).map((s) => ({
+        subject: s,
+        percentage: Number(((map[s].present / map[s].total) * 100).toFixed(1)),
+        presentDays: map[s].present,
+        totalClasses: map[s].total,
+      }))
     );
-
-    setLatestDate(latestAttendance.date);
   };
 
-  // ✅ SELECTED DATE ATTENDANCE
-  const calculateSelectedDateAttendance =
-    (
-      attendanceData,
-      studentsData,
-      selectedDate
-    ) => {
-      // ✅ GET ALL RECORDS OF THAT DATE
-      const selectedAttendance =
-        attendanceData.filter(
-          (item) =>
-            item.date === selectedDate
-        );
+  const calculateLatestAttendance = (data) => {
+    if (!data.length) return;
+    const latest = [...data].sort(
+      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+    )[0];
+    setLatestSubject(latest.subject);
+    setLatestDate(latest.date);
+  };
 
-      if (
-        selectedAttendance.length === 0
-      ) {
-        setPresentStudents([]);
+  const calculateSelectedDateAttendance = (data, studentsData, date) => {
+    const selected = data.filter((item) => item.date === date);
+    if (!selected.length) { setPresentStudents([]); setAbsentStudents([]); return; }
+    const presentSet = new Set();
+    const absentSet = new Set();
+    selected.forEach((att) => {
+      att.attendanceRecords.forEach((r) => {
+        const student = studentsData.find((s) => s._id === r.studentId?.toString());
+        if (!student) return;
+        if (r.attendance === "present") { presentSet.add(student.Name); absentSet.delete(student.Name); }
+        if (r.attendance === "absent")  { absentSet.add(student.Name);  presentSet.delete(student.Name); }
+      });
+    });
+    setPresentStudents([...presentSet]);
+    setAbsentStudents([...absentSet]);
+  };
 
-        setAbsentStudents([]);
+  if (loading) {
+    return (
+      <div style={{ display: "flex", justifyContent: "center", paddingTop: 80 }}>
+        <span className="spinner spinner-lg" />
+      </div>
+    );
+  }
 
-        return;
-      }
-
-      const presentSet = new Set();
-
-      const absentSet = new Set();
-
-      selectedAttendance.forEach(
-        (attendanceItem) => {
-          attendanceItem.attendanceRecords.forEach(
-            (record) => {
-              const student =
-                studentsData.find(
-                  (s) =>
-                    s._id ===
-                    record.studentId?.toString()
-                );
-
-              if (!student) return;
-
-              if (
-                record.attendance ===
-                "present"
-              ) {
-                presentSet.add(
-                  student.Name
-                );
-
-                absentSet.delete(
-                  student.Name
-                );
-              }
-
-              if (
-                record.attendance ===
-                "absent"
-              ) {
-                absentSet.add(
-                  student.Name
-                );
-
-                presentSet.delete(
-                  student.Name
-                );
-              }
-            }
-          );
-        }
-      );
-
-      setPresentStudents([
-        ...presentSet,
-      ]);
-
-      setAbsentStudents([
-        ...absentSet,
-      ]);
-    };
+  const totalToday = presentStudents.length + absentStudents.length;
+  const presentPct = totalToday > 0 ? ((presentStudents.length / totalToday) * 100).toFixed(0) : 0;
 
   return (
-    <div className="page">
-      <h1>Dashboard</h1>
-
-      {/* ✅ LATEST ENTRY */}
-      <div className="card">
-        <h2>
-          Latest Subject:
-          {" "}
-          {latestSubject || "No Subject"}
-        </h2>
-
-        <p>
-          Latest Attendance Date:
-          {" "}
-          {latestDate || "No Date"}
-        </p>
+    <div>
+      <div className="page-header">
+        <h1>Teacher Dashboard</h1>
+        <p>Overview of attendance and student performance</p>
       </div>
 
-      {/* ✅ DATE PICKER */}
-      <div className="card">
-        <h2>
-          View Attendance By Date
-        </h2>
+      {/* Stat Cards */}
+      <div className="stats-grid">
+        <div className="stat-card">
+          <div className="stat-info">
+            <div className="stat-label">Total Students</div>
+            <div className="stat-value">{students.length}</div>
+            <div className="stat-sub">Registered in system</div>
+          </div>
+          <div className="stat-icon indigo"><MdPeople /></div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-info">
+            <div className="stat-label">Present Today</div>
+            <div className="stat-value" style={{ color: "var(--success)" }}>{presentStudents.length}</div>
+            <div className="stat-sub">{presentPct}% attendance rate</div>
+          </div>
+          <div className="stat-icon green"><MdCheckCircle /></div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-info">
+            <div className="stat-label">Absent Today</div>
+            <div className="stat-value" style={{ color: "var(--danger)" }}>{absentStudents.length}</div>
+            <div className="stat-sub">For selected date</div>
+          </div>
+          <div className="stat-icon red"><MdCancel /></div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-info">
+            <div className="stat-label">Latest Session</div>
+            <div className="stat-value" style={{ fontSize: 16, paddingTop: 6 }}>
+              {latestSubject || "—"}
+            </div>
+            <div className="stat-sub">{latestDate || "No sessions yet"}</div>
+          </div>
+          <div className="stat-icon amber"><MdTrendingUp /></div>
+        </div>
+      </div>
 
+      {/* Date Filter */}
+      <div className="card">
+        <div className="card-title"><MdCalendarToday /> View Attendance By Date</div>
         <input
           type="date"
+          className="form-input"
+          style={{ maxWidth: 220 }}
           value={selectedDate}
-          onChange={(e) =>
-            setSelectedDate(
-              e.target.value
-            )
-          }
+          onChange={(e) => setSelectedDate(e.target.value)}
         />
       </div>
 
-      {/* ✅ DASHBOARD CARDS */}
-      <DashboardCards
-        total={students.length}
-        present={presentStudents.length}
-        absent={absentStudents.length}
-      />
-
-      {/* ✅ PRESENT STUDENTS */}
-      <div className="card green">
-        <h2>Present Students</h2>
-
-        {presentStudents.length > 0 ? (
-          presentStudents.map(
-            (student, index) => (
-              <p key={index}>
-                {student}
-              </p>
-            )
-          )
-        ) : (
-          <p>No Students</p>
-        )}
+      {/* Present / Absent Lists */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
+        <div className="card" style={{ borderLeft: "4px solid var(--success)", marginBottom: 0 }}>
+          <div className="card-title" style={{ color: "var(--success)" }}>
+            <MdCheckCircle /> Present ({presentStudents.length})
+          </div>
+          {presentStudents.length > 0 ? (
+            presentStudents.map((s, i) => (
+              <div key={i} style={{ padding: "6px 0", borderBottom: "1px solid var(--border)", fontSize: 14, color: "var(--text-secondary)" }}>
+                {s}
+              </div>
+            ))
+          ) : (
+            <p style={{ color: "var(--text-muted)", fontSize: 14 }}>No records for this date</p>
+          )}
+        </div>
+        <div className="card" style={{ borderLeft: "4px solid var(--danger)", marginBottom: 0 }}>
+          <div className="card-title" style={{ color: "var(--danger)" }}>
+            <MdCancel /> Absent ({absentStudents.length})
+          </div>
+          {absentStudents.length > 0 ? (
+            absentStudents.map((s, i) => (
+              <div key={i} style={{ padding: "6px 0", borderBottom: "1px solid var(--border)", fontSize: 14, color: "var(--text-secondary)" }}>
+                {s}
+              </div>
+            ))
+          ) : (
+            <p style={{ color: "var(--text-muted)", fontSize: 14 }}>No records for this date</p>
+          )}
+        </div>
       </div>
 
-      {/* ✅ ABSENT STUDENTS */}
-      <div className="card red">
-        <h2>Absent Students</h2>
-
-        {absentStudents.length > 0 ? (
-          absentStudents.map(
-            (student, index) => (
-              <p key={index}>
-                {student}
-              </p>
-            )
-          )
-        ) : (
-          <p>No Students</p>
-        )}
-      </div>
-
-      {/* ✅ SEMESTER ANALYTICS */}
-      <Charts
-        attendanceStats={attendanceStats}
-      />
+      {/* Charts */}
+      {attendanceStats.length > 0 ? (
+        <div className="card">
+          <div className="card-title">Semester Analytics</div>
+          <Charts attendanceStats={attendanceStats} />
+        </div>
+      ) : (
+        <div className="card">
+          <div className="empty-state">
+            <MdBarChart style={{ fontSize: 48, display: "block", margin: "0 auto 12px", opacity: 0.3 }} />
+            <p>No attendance data to display yet</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,5 +1,7 @@
 import StudentModel from "../models/Student.js";
 import AttendanceModel from "../models/Attendance.js";
+import User from "../models/User.js";
+import bcrypt from "bcryptjs";
 
 // ✅ GET ALL STUDENTS
 export const getStudents = async (req, res) => {
@@ -35,6 +37,25 @@ export const addStudent = async (req, res) => {
       Email_id,
     } = req.body;
 
+    // Check if student already exists
+    const existingStudent = await StudentModel.findOne({ Register_number });
+    if (existingStudent) {
+      return res.status(400).json({
+        message: "Student with this register number already exists",
+      });
+    }
+
+    // Create User account for student
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(Register_number, salt);
+
+    const user = await User.create({
+      name: Name,
+      email: Register_number, // Use register number as email for simplicity
+      password: hashedPassword,
+      role: "student",
+    });
+
     const student = new StudentModel({
       Name,
       Register_number,
@@ -48,6 +69,7 @@ export const addStudent = async (req, res) => {
       Aadhar_number,
       Mobile_number,
       Email_id,
+      userId: user._id,
     });
 
     await student.save();

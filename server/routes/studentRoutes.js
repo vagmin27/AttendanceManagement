@@ -1,4 +1,6 @@
 import express from "express";
+import protect from "../middleware/authMiddleware.js";
+import { allowTeacher } from "../middleware/roleMiddleware.js";
 
 import {
   addStudent,
@@ -13,6 +15,8 @@ const router = express.Router();
 // ✅ ADD STUDENT
 router.post(
   "/form/insert",
+  protect,
+  allowTeacher,
   addStudent
 );
 
@@ -20,6 +24,8 @@ router.post(
 // ✅ GET ALL STUDENTS
 router.get(
   "/read",
+  protect,
+  allowTeacher,
   getStudents
 );
 
@@ -27,6 +33,8 @@ router.get(
 // ✅ GET SINGLE STUDENT
 router.get(
   "/remove/getStudent/:registerNumber",
+  protect,
+  allowTeacher,
   getSingleStudent
 );
 
@@ -34,6 +42,8 @@ router.get(
 // ✅ DELETE STUDENT
 router.delete(
   "/remove/delete/:registerNumber",
+  protect,
+  allowTeacher,
   deleteStudent
 );
 

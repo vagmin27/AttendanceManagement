@@ -1,194 +1,180 @@
 import { useEffect, useState } from "react";
-
+import toast from "react-hot-toast";
 import API from "../services/api";
-
-import StudentTable from "../components/StudentTable";
-import SearchBar from "../components/SearchBar";
+import { MdSearch } from "react-icons/md";
 
 function Attendance() {
-  const [students, setStudents] =
-    useState([]);
-
-  const [subjects, setSubjects] =
-    useState([]);
-
-  const [attendanceData, setAttendanceData] =
-    useState({});
-
-  const [search, setSearch] =
-    useState("");
-
-  const [subject, setSubject] =
-    useState("");
-
-  // ✅ DATE STATE
-  const [date, setDate] = useState(
-    new Date()
-      .toISOString()
-      .split("T")[0]
-  );
+  const [students, setStudents] = useState([]);
+  const [subjects, setSubjects] = useState([]);
+  const [attendanceData, setAttendanceData] = useState({});
+  const [search, setSearch] = useState("");
+  const [subject, setSubject] = useState("");
+  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     fetchStudents();
-
     fetchSubjects();
   }, []);
 
-  // ✅ FETCH STUDENTS
   const fetchStudents = async () => {
     try {
       const res = await API.get("/read");
-
       setStudents(res.data);
     } catch (error) {
-      console.log(error);
+      console.error(error);
     }
   };
 
-  // ✅ FETCH SUBJECTS
   const fetchSubjects = async () => {
     try {
-      const res = await API.get(
-        "/subjects"
-      );
-
+      const res = await API.get("/subjects");
       setSubjects(res.data);
     } catch (error) {
-      console.log(error);
+      console.error(error);
     }
   };
 
-  // ✅ HANDLE ATTENDANCE
-  const handleAttendance = (
-    id,
-    status
-  ) => {
-    setAttendanceData((prev) => ({
-      ...prev,
-      [id]: status,
-    }));
+  const handleAttendance = (id, status) => {
+    setAttendanceData((prev) => ({ ...prev, [id]: status }));
   };
 
-  // ✅ SUBMIT ATTENDANCE
   const submitAttendance = async () => {
+    if (!subject) { toast.error("Please select a subject"); return; }
+    if (Object.keys(attendanceData).length === 0) { toast.error("Please mark attendance for at least one student"); return; }
+
+    setLoading(true);
     try {
-      // ✅ CHECK SUBJECT
-      if (!subject) {
-        return alert(
-          "Please Select Subject"
-        );
-      }
-
-      // ✅ CHECK ATTENDANCE
-      if (
-        Object.keys(attendanceData)
-          .length === 0
-      ) {
-        return alert(
-          "Please Mark Attendance"
-        );
-      }
-
-      const attendanceArray =
-        Object.entries(
-          attendanceData
-        ).map(
-          ([studentId, attendance]) => ({
-            studentId,
-            attendance,
-          })
-        );
-
-      await API.post("/attendance", {
-        subject,
-
-        date,
-
-        attendanceData:
-          attendanceArray,
-      });
-
-      alert("Attendance Updated");
-
-      // ✅ RESET ATTENDANCE
+      const attendanceArray = Object.entries(attendanceData).map(([studentId, attendance]) => ({ studentId, attendance }));
+      await API.post("/attendance", { subject, date, attendanceData: attendanceArray });
+      toast.success("Attendance submitted successfully!");
       setAttendanceData({});
     } catch (error) {
-      console.log(error);
-
-      alert(
-        "Error Updating Attendance"
-      );
+      toast.error("Failed to submit attendance. Try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
-  // ✅ FILTER STUDENTS
-  const filteredStudents =
-    students.filter((student) =>
-      student.Name.toLowerCase().includes(
-        search.toLowerCase()
-      )
-    );
+  const filtered = students.filter((s) =>
+    s.Name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const markedCount = Object.keys(attendanceData).length;
 
   return (
-    <div className="page">
-      <h1>Attendance</h1>
+    <div>
+      <div className="page-header">
+        <h1>Mark Attendance</h1>
+        <p>Select a subject, date, then mark each student present or absent</p>
+      </div>
 
-      {/* ✅ SUBJECT DROPDOWN */}
-      <select
-        className="subject-dropdown"
-        value={subject}
-        onChange={(e) =>
-          setSubject(e.target.value)
-        }
-      >
-        <option value="">
-          Select Subject
-        </option>
+      {/* Filters */}
+      <div className="card">
+        <div className="filter-row">
+          <div style={{ flex: 1, minWidth: 180 }}>
+            <label className="form-label">Subject</label>
+            <select
+              className="form-select"
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+            >
+              <option value="">Select Subject</option>
+              {subjects.map((sub) => (
+                <option key={sub._id} value={sub.subjectName}>{sub.subjectName}</option>
+              ))}
+            </select>
+          </div>
+          <div style={{ flex: 1, minWidth: 180 }}>
+            <label className="form-label">Date</label>
+            <input
+              type="date"
+              className="form-input"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
+          </div>
+        </div>
+      </div>
 
-        {subjects.map((sub) => (
-          <option
-            key={sub._id}
-            value={sub.subjectName}
+      {/* Student List */}
+      <div className="card">
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+          <div className="card-title" style={{ marginBottom: 0 }}>
+            Students ({filtered.length})
+            {markedCount > 0 && (
+              <span className="badge badge-indigo" style={{ marginLeft: 8 }}>{markedCount} marked</span>
+            )}
+          </div>
+        </div>
+
+        {/* Search */}
+        <div className="search-wrap">
+          <MdSearch />
+          <input
+            type="text"
+            className="search-input"
+            placeholder="Search students..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+
+        {filtered.length === 0 ? (
+          <div className="empty-state"><p>No students found</p></div>
+        ) : (
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Name</th>
+                  <th>Register No.</th>
+                  <th>Branch</th>
+                  <th>Attendance</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((student, i) => (
+                  <tr key={student._id}>
+                    <td>{i + 1}</td>
+                    <td>{student.Name}</td>
+                    <td>{student.Register_number}</td>
+                    <td>{student.Branch_of_studying || "—"}</td>
+                    <td>
+                      <div className="att-toggle">
+                        <button
+                          className={`att-btn present ${attendanceData[student._id] === "present" ? "active" : ""}`}
+                          onClick={() => handleAttendance(student._id, "present")}
+                        >
+                          Present
+                        </button>
+                        <button
+                          className={`att-btn absent ${attendanceData[student._id] === "absent" ? "active" : ""}`}
+                          onClick={() => handleAttendance(student._id, "absent")}
+                        >
+                          Absent
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        <div style={{ marginTop: 20, display: "flex", justifyContent: "flex-end" }}>
+          <button
+            className="btn btn-primary"
+            onClick={submitAttendance}
+            disabled={loading}
+            style={{ minWidth: 180 }}
           >
-            {sub.subjectName}
-          </option>
-        ))}
-      </select>
-
-      {/* ✅ DATE PICKER */}
-      <input
-        type="date"
-        className="date-picker"
-        value={date}
-        onChange={(e) =>
-          setDate(e.target.value)
-        }
-      />
-
-      {/* ✅ SEARCH BAR */}
-      <SearchBar
-        search={search}
-        setSearch={setSearch}
-      />
-
-      {/* ✅ STUDENT TABLE */}
-      <StudentTable
-        students={filteredStudents}
-        attendanceData={
-          attendanceData
-        }
-        handleAttendance={
-          handleAttendance
-        }
-      />
-
-      {/* ✅ SUBMIT BUTTON */}
-      <button
-        className="main-btn"
-        onClick={submitAttendance}
-      >
-        Update Attendance
-      </button>
+            {loading ? <><span className="spinner" /> Submitting...</> : "Submit Attendance"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

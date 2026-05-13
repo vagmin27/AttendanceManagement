@@ -1,4 +1,6 @@
 import express from "express";
+import protect from "../middleware/authMiddleware.js";
+import { allowTeacher } from "../middleware/roleMiddleware.js";
 
 import {
   addSubject,
@@ -7,8 +9,8 @@ import {
 
 const router = express.Router();
 
-router.post("/subjects", addSubject);
+router.post("/subjects", protect, allowTeacher, addSubject);
 
-router.get("/subjects", getSubjects);
+router.get("/subjects", protect, allowTeacher, getSubjects);
 
 export default router;

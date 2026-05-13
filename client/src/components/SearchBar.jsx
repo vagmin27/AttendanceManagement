@@ -1,12 +1,17 @@
+import { MdSearch } from "react-icons/md";
+
 function SearchBar({ search, setSearch }) {
   return (
-    <input
-      type="text"
-      placeholder="Search student..."
-      value={search}
-      onChange={(e) => setSearch(e.target.value)}
-      className="search-bar"
-    />
+    <div className="search-wrap">
+      <MdSearch />
+      <input
+        type="text"
+        className="search-input"
+        placeholder="Search students..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+      />
+    </div>
   );
 }
 
